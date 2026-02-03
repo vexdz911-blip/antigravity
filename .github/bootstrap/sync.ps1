@@ -1,23 +1,24 @@
-<#
-sync.ps1
-Sync dotfiles or run chezmoi update. Intended to be run from scheduled task or manually.
-#>
+# sync.ps1
+# Simple sync script to update dotfiles or config
 Set-StrictMode -Version Latest
 $cfg = Join-Path $env:USERPROFILE '.config\antigravity'
-Write-Host "Running antigravity sync against $cfg"
+if (-not (Test-Path $cfg)) { Write-Warning "$cfg not found"; exit 0 }
 
-# If a dotfiles bare repo is configured, attempt to update it
-$dotfilesDir = Join-Path $env:USERPROFILE '.dotfiles'
-if (Test-Path $dotfilesDir) {
-    try {
-        Write-Host "Updating bare dotfiles repo"
-        & git --git-dir=$dotfilesDir --work-tree=$env:USERPROFILE pull origin main
-    } catch {
-        Write-Warning "Failed to update bare dotfiles repo: $_"
-    }
-} elseif (Get-Command chezmoi -ErrorAction SilentlyContinue) {
-    Write-Host "Running chezmoi update"
-    chezmoi update
+# If using a bare dotfiles repo, update it. Adjust as needed.
+$dotbare = Join-Path $env:USERPROFILE '.dotfiles'
+if (Test-Path $dotbare) {
+    Push-Location $dotbare
+    git fetch --all --prune
+    git reset --hard origin/HEAD
+    Pop-Location
+    Write-Host "Bare dotfiles repo updated." -ForegroundColor Green
 } else {
-    Write-Warning "No dotfiles repo (.dotfiles) found and chezmoi not installed — nothing to sync"
+    # fallback: update antigravity config from upstream repo
+    $cfgRepo = 'https://github.com/vexdz911-blip/antigravity.git'
+    $tmp = Join-Path $env:TEMP 'antigravity-sync'
+    Remove-Item -Recurse -Force -ErrorAction SilentlyContinue $tmp
+    git clone --depth 1 $cfgRepo $tmp
+    Copy-Item -Path (Join-Path $tmp '.github') -Destination $cfg -Recurse -Force -ErrorAction SilentlyContinue
+    Remove-Item -Recurse -Force $tmp
+    Write-Host "Antigravity config refreshed from $cfgRepo" -ForegroundColor Green
 }
