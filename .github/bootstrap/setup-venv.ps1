@@ -1,35 +1,22 @@
-<#
-setup-venv.ps1
-Create/update Python virtualenv and install requirements.
-#>
+# setup-venv.ps1
+# Creates and activates a Python venv, upgrades pip, installs pinned deps from requirements.txt
+
 Set-StrictMode -Version Latest
+if (-not (Get-Command python -ErrorAction SilentlyContinue)) { Write-Error "Python is not installed or not in PATH."; exit 1 }
 
-$root = Get-Location
-$venvDir = Join-Path $root '.venv'
+$venvPath = Join-Path $PSScriptRoot '.venv'
+python -m venv $venvPath
 
-if (-not (Test-Path "$venvDir")) {
-    Write-Host "Creating virtualenv at $venvDir"
-    python -m venv $venvDir
-} else {
-    Write-Host "Virtualenv already exists at $venvDir"
-}
-
-$activate = Join-Path $venvDir 'Scripts\Activate.ps1'
+# Activate and install
+$activate = Join-Path $venvPath 'Scripts\Activate.ps1'
 if (Test-Path $activate) {
-    Write-Host "Activating virtualenv"
     & $activate
-} else {
-    Write-Warning "Activation script not found. Ensure Python venv creation succeeded."
-}
-
-# Upgrade pip and install requirements if present
-try {
     python -m pip install --upgrade pip
-    if (Test-Path 'requirements.txt') {
-        pip install -r requirements.txt
+    if (Test-Path (Join-Path $PSScriptRoot 'requirements.txt')) {
+        pip install -r (Join-Path $PSScriptRoot 'requirements.txt')
     } else {
-        Write-Host "No requirements.txt found in $root — skipping pip installs"
+        Write-Host "No requirements.txt found in $PSScriptRoot" -ForegroundColor Yellow
     }
-} catch {
-    Write-Warning "Error installing packages: $_"
+} else {
+    Write-Error "Activation script not found at $activate"
 }
