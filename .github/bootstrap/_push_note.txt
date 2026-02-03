@@ -1,0 +1,4 @@
+<#
+NOTE: A few APIs in the "push multiple files" helper can fail for large tree creation on some accounts.
+We'll create files individually to ensure reliability.
+#>
